@@ -1,0 +1,15 @@
+{
+  "id": "incident_protocol",
+  "name": "Incident Protocol",
+  "description": "Capture incident response details for production or operations events.",
+  "fields": {
+    "incidentId": "string — unique incident identifier",
+    "reporterName": "string — full name of the person reporting",
+    "incidentDate": "string — date/time of the incident in ISO-8601 or DD.MM.YYYY",
+    "affectedSystem": "string — system or service impacted",
+    "description": "string — concise incident summary",
+    "severity": "string — severity level such as low, medium, high, or critical",
+    "resolution": "string — remediation actions and current status"
+  },
+  "systemPrompt": "You are an incident-capture assistant. Extract concise and accurate incident details and ask for missing critical incident fields."
+}

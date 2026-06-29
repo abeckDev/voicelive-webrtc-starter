@@ -41,32 +41,14 @@ from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
 
 from agent import ExtractionAgent
+from protocol_selector import ProtocolSelector
 
 if TYPE_CHECKING:
     from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Default protocol fields — all empty at session start
-# ---------------------------------------------------------------------------
-EMPTY_PROTOCOL = {
-    "researcherName": "",
-    "experimentTitle": "",
-    "experimentDate": "",
-    "procedureSteps": "",
-    "observations": "",
-    "result": "",
-}
-
-# System prompt injected into the Voice Live session.
-# It tells the voice model what role it plays and which fields it should collect.
-SYSTEM_PROMPT = (
-    "You are a helpful lab assistant. "
-    "As the researcher describes their experiment, help them fill out the protocol. "
-    "Ask clarifying questions for any missing fields: "
-    "title, researcher name, date, procedure steps, observations, and result."
-)
+_protocol_selector = ProtocolSelector()
 
 
 class VoiceSession:
@@ -87,10 +69,11 @@ class VoiceSession:
         self._ws = websocket
         # The active Voice Live connection (set in start())
         self._connection = None
-        # GPT-4o extraction agent — stateless, reused across events
-        self._agent = ExtractionAgent()
+        # GPT-4o extraction agent — initialized once protocol is selected
+        self._agent: ExtractionAgent | None = None
+        self._protocol: dict | None = None
         # Current state of the protocol fields
-        self._fields: dict = dict(EMPTY_PROTOCOL)
+        self._fields: dict = {}
         # Flag to signal the event-listener loop to stop
         self._running = False
 
@@ -98,13 +81,19 @@ class VoiceSession:
     # Public API
     # ------------------------------------------------------------------
 
-    async def start(self, config: dict) -> None:
+    async def start(self, config: dict, protocol_id: str) -> None:
         """
         Connect to Azure Voice Live and begin listening for events.
 
         `config` may contain overrides for endpoint, api_key, model, and voice.
         Falls back to environment variables for any value not provided.
         """
+        self._protocol = _protocol_selector.select_protocol(protocol_id)
+        if not self._protocol:
+            raise ValueError(f"Unknown protocol id: {protocol_id}")
+        self._fields = {key: "" for key in (self._protocol.get("fields") or {}).keys()}
+        self._agent = ExtractionAgent(protocol=self._protocol)
+
         endpoint = config.get("endpoint") or os.getenv("AZURE_VOICELIVE_ENDPOINT", "")
         api_key = config.get("apiKey") or os.getenv("AZURE_VOICELIVE_API_KEY") or None
         model = config.get("model") or os.getenv("VOICELIVE_MODEL", "gpt-4o")
@@ -131,7 +120,7 @@ class VoiceSession:
         await self._connection.session.update(
             session=RealtimeRequestSession(
                 voice=voice,
-                instructions=SYSTEM_PROMPT,
+                instructions=self._protocol.get("systemPrompt", ""),
                 # Server-side VAD (Voice Activity Detection):
                 # Azure automatically detects when the user starts/stops speaking.
                 turn_detection=TurnDetection(type="server_vad"),
@@ -178,6 +167,12 @@ class VoiceSession:
         """Return the current state of the extracted protocol fields."""
         return dict(self._fields)
 
+    def get_protocol_id(self) -> str:
+        """Return the active protocol id."""
+        if not self._protocol:
+            return ""
+        return str(self._protocol.get("id", ""))
+
     # ------------------------------------------------------------------
     # Internal event handler
     # ------------------------------------------------------------------
@@ -202,6 +197,7 @@ class VoiceSession:
                     # The session is now configured; tell the browser it can
                     # start streaming audio.
                     await self._ws.send_json({"type": "session_ready"})
+                    await self._ws.send_json({"type": "fields", "data": self._fields})
 
                 # ── Speech detection ──────────────────────────────────────
                 elif event_type == ServerEventType.INPUT_AUDIO_BUFFER_SPEECH_STARTED:
@@ -274,6 +270,9 @@ class VoiceSession:
         If a follow_up_hint is returned, inject it into the Voice Live
         conversation so the assistant asks the next question automatically.
         """
+        if self._agent is None:
+            return
+
         result = await self._agent.extract(transcript, self._fields)
         updated_fields = result["fields"]
         follow_up_hint = result.get("follow_up_hint", "")

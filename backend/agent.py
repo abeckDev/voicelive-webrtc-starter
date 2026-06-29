@@ -21,55 +21,12 @@ import json
 import logging
 import os
 
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Protocol schema
-# ---------------------------------------------------------------------------
-# The six fields that make up a minimal lab protocol.
-# All fields are strings; the extraction agent populates them from the
-# running transcript and leaves unchanged any field the user hasn't mentioned yet.
-PROTOCOL_SCHEMA = {
-    "researcherName": "string — full name of the researcher",
-    "experimentTitle": "string — short descriptive title of the experiment",
-    "experimentDate": "string — date in DD.MM.YYYY format",
-    "procedureSteps": "string — numbered list of procedure steps",
-    "observations": "string — what was observed during the experiment",
-    "result": "string — outcome: 'pass' or 'fail' plus brief notes",
-}
-
-SYSTEM_PROMPT = """You are a data-extraction assistant for lab protocols.
-Given the latest transcript snippet and the current state of the protocol fields,
-extract or update any field values you can infer from the transcript.
-
-Protocol schema (JSON):
-{schema}
-
-Rules:
-1. Only update a field if the transcript clearly provides new information for it.
-2. Keep the existing value if the transcript doesn't mention anything new for that field.
-3. Use DD.MM.YYYY for dates.
-4. For `result`, start with "pass" or "fail" followed by any notes.
-5. Identify the single most important field that is still empty or incomplete and
-   return it as `follow_up_hint` (a short question the assistant should ask).
-   If all fields are filled, return an empty string for `follow_up_hint`.
-
-Respond ONLY with valid JSON in this exact shape:
-{{
-  "fields": {{
-    "researcherName": "...",
-    "experimentTitle": "...",
-    "experimentDate": "...",
-    "procedureSteps": "...",
-    "observations": "...",
-    "result": "..."
-  }},
-  "follow_up_hint": "..."
-}}
-""".format(
-    schema=json.dumps(PROTOCOL_SCHEMA, indent=2)
+_AZURE_TOKEN_PROVIDER = get_bearer_token_provider(
+    DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
 )
 
 
@@ -78,27 +35,50 @@ class ExtractionAgent:
     Extracts structured protocol fields from a running transcript.
 
     Usage:
-        agent = ExtractionAgent()
+        agent = ExtractionAgent(protocol=...)
         result = await agent.extract(transcript, current_fields)
         # result = {"fields": {...}, "follow_up_hint": "..."}
     """
 
-    def __init__(self) -> None:
+    def __init__(self, protocol: dict) -> None:
         # Resolve the Azure OpenAI endpoint — fall back to the Voice Live endpoint
         # if no dedicated OpenAI endpoint is configured.
         openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv(
             "AZURE_VOICELIVE_ENDPOINT", ""
         )
-        api_key = os.getenv("AZURE_VOICELIVE_API_KEY") or None
+        api_key = (os.getenv("AZURE_VOICELIVE_API_KEY") or "").strip()
         self._deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
+        self._field_keys = list((protocol.get("fields") or {}).keys())
+        self._system_prompt = self._build_system_prompt(protocol)
 
-        # AsyncAzureOpenAI client — uses api_key when provided,
-        # otherwise falls back to DefaultAzureCredential via the azure-identity
-        # token provider (not shown here for brevity; add if needed).
-        self._client = AsyncAzureOpenAI(
-            azure_endpoint=openai_endpoint,
-            api_key=api_key,
-            api_version="2024-02-01",
+        client_kwargs = {
+            "azure_endpoint": openai_endpoint,
+            "api_version": "2024-02-01",
+        }
+        if api_key:
+            client_kwargs["api_key"] = api_key
+        else:
+            client_kwargs["azure_ad_token_provider"] = _AZURE_TOKEN_PROVIDER
+
+        self._client = AsyncAzureOpenAI(**client_kwargs)
+
+    def _build_system_prompt(self, protocol: dict) -> str:
+        schema = protocol.get("fields") or {}
+        empty_shape = {key: "..." for key in schema.keys()}
+        return (
+            f'{protocol.get("systemPrompt", "")}\n\n'
+            f'Protocol schema (JSON):\n{json.dumps(schema, indent=2)}\n\n'
+            "Rules:\n"
+            "1. Only update a field if the transcript clearly provides new information for it.\n"
+            "2. Keep the existing value if the transcript doesn't mention anything new for that field.\n"
+            "3. Identify the single most important field that is still empty or incomplete and\n"
+            "   return it as `follow_up_hint` (a short question the assistant should ask).\n"
+            "4. If all fields are filled, return an empty string for `follow_up_hint`.\n\n"
+            "Respond ONLY with valid JSON in this exact shape:\n"
+            "{\n"
+            f'  "fields": {json.dumps(empty_shape, indent=2)},\n'
+            '  "follow_up_hint": "..."\n'
+            "}\n"
         )
 
     async def extract(self, transcript: str, current_fields: dict) -> dict:
@@ -128,7 +108,7 @@ class ExtractionAgent:
             response = await self._client.chat.completions.create(
                 model=self._deployment,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": self._system_prompt},
                     {"role": "user", "content": user_message},
                 ],
                 # JSON mode ensures the model always returns parseable JSON.
@@ -146,7 +126,7 @@ class ExtractionAgent:
             # Merge: only overwrite non-empty extracted values
             merged = dict(current_fields)
             for key, value in fields.items():
-                if key in merged and value:
+                if key in self._field_keys and value:
                     merged[key] = value
 
             logger.debug("Extraction result: %s | hint: %s", merged, follow_up_hint)

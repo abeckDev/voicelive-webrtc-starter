@@ -1,0 +1,14 @@
+{
+  "id": "lab_protocol",
+  "name": "Lab Protocol",
+  "description": "Capture lab experiment details while speaking with the assistant.",
+  "fields": {
+    "researcherName": "string — full name of the researcher",
+    "experimentTitle": "string — short descriptive title of the experiment",
+    "experimentDate": "string — date in DD.MM.YYYY format",
+    "procedureSteps": "string — numbered list of procedure steps",
+    "observations": "string — what was observed during the experiment",
+    "result": "string — outcome: 'pass' or 'fail' plus brief notes"
+  },
+  "systemPrompt": "You are a data-extraction assistant for lab protocols. Given user speech, help gather all protocol fields clearly and ask follow-up questions for missing information."
+}
