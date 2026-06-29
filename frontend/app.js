@@ -27,6 +27,8 @@ let sessionMetadata = { session_id: '', started_at: '', ended_at: '' };
 let latestFields = {};
 let transcriptLines = [];
 let capturedPcmChunks = [];
+// Keep roughly up to ~5 minutes of 20ms chunks in memory for WAV export.
+const MAX_PCM_CHUNKS = 15000;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([loadConfig(), loadProtocols()]);
@@ -56,8 +58,15 @@ async function loadConfig() {
 async function loadProtocols() {
   try {
     const res = await fetch('/protocols');
-    if (!res.ok) return;
+    if (!res.ok) {
+      markProtocolsUnavailable('Could not load protocols from backend.');
+      return;
+    }
     const protocols = await res.json();
+    if (!protocols.length) {
+      markProtocolsUnavailable('No protocols available.');
+      return;
+    }
     protocolSelect.innerHTML = '';
     for (const protocol of protocols) {
       const option = document.createElement('option');
@@ -65,9 +74,17 @@ async function loadProtocols() {
       option.textContent = `${protocol.name} — ${protocol.description}`;
       protocolSelect.appendChild(option);
     }
+    btnStart.disabled = false;
   } catch (err) {
     console.warn('Could not fetch /protocols:', err);
+    markProtocolsUnavailable('Could not fetch protocols.');
   }
+}
+
+function markProtocolsUnavailable(message) {
+  btnStart.disabled = true;
+  setStatus(message, 'error');
+  appendTranscript(`⚠️ ${message}`, 'system');
 }
 
 async function startSession() {
@@ -96,6 +113,9 @@ async function startSession() {
     micSource.connect(captureNode);
     captureNode.port.onmessage = (e) => {
       capturedPcmChunks.push(e.data);
+      if (capturedPcmChunks.length > MAX_PCM_CHUNKS) {
+        capturedPcmChunks.shift();
+      }
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'audio', data: e.data }));
       }

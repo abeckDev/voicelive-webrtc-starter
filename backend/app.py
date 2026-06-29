@@ -175,7 +175,10 @@ async def websocket_session(websocket: WebSocket, client_id: str) -> None:
                 config = message.get("config", {})
                 protocol_id = config.get("protocol_id") or config.get("protocolId")
                 if not protocol_id:
-                    protocol_id = _protocol_selector.get_available_protocols()[0].get("id", "")
+                    available_protocols = _protocol_selector.get_available_protocols()
+                    if not available_protocols:
+                        raise ValueError("No protocols are configured on the backend")
+                    protocol_id = available_protocols[0].get("id", "")
                 await session.start(config, protocol_id=protocol_id)
                 logger.info("Session started for client: %s", client_id)
 

@@ -25,6 +25,9 @@ from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI
 
 logger = logging.getLogger(__name__)
+_AZURE_TOKEN_PROVIDER = get_bearer_token_provider(
+    DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+)
 
 
 class ExtractionAgent:
@@ -55,10 +58,7 @@ class ExtractionAgent:
         if api_key:
             client_kwargs["api_key"] = api_key
         else:
-            credential = DefaultAzureCredential()
-            client_kwargs["azure_ad_token_provider"] = get_bearer_token_provider(
-                credential, "https://cognitiveservices.azure.com/.default"
-            )
+            client_kwargs["azure_ad_token_provider"] = _AZURE_TOKEN_PROVIDER
 
         self._client = AsyncAzureOpenAI(**client_kwargs)
 
@@ -126,7 +126,7 @@ class ExtractionAgent:
             # Merge: only overwrite non-empty extracted values
             merged = dict(current_fields)
             for key, value in fields.items():
-                if key in merged and key in self._field_keys and value:
+                if key in self._field_keys and value:
                     merged[key] = value
 
             logger.debug("Extraction result: %s | hint: %s", merged, follow_up_hint)

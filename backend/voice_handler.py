@@ -89,6 +89,8 @@ class VoiceSession:
         Falls back to environment variables for any value not provided.
         """
         self._protocol = _protocol_selector.select_protocol(protocol_id)
+        if not self._protocol:
+            raise ValueError(f"Unknown protocol id: {protocol_id}")
         self._fields = {key: "" for key in (self._protocol.get("fields") or {}).keys()}
         self._agent = ExtractionAgent(protocol=self._protocol)
 
