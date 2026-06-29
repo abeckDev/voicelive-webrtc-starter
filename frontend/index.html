@@ -1,0 +1,125 @@
+<!-- frontend/index.html
+     Single-page UI for the voicelive-webrtc-starter demo.
+
+     Layout:
+       Left column  — voice controls, status indicator, live transcript
+       Right column — lab protocol form (auto-filled by the voice agent)
+
+     The page loads app.js as an ES module. All UI interactions are
+     handled in JavaScript; this file stays pure HTML.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Lab Protocol — Azure Voice Live Starter</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <span>🎙️</span>
+  <h1>Voice Lab Protocol</h1>
+  <span class="badge">Azure Voice Live Starter</span>
+</header>
+
+<!-- ── Main two-column layout ──────────────────────────────────────────── -->
+<main>
+
+  <!-- ── LEFT: Voice controls + transcript ──────────────────────────── -->
+  <div class="card">
+    <h2>Voice Controls</h2>
+
+    <!-- Connection status indicator -->
+    <div id="status-bar">
+      <div id="status-dot"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+
+    <!-- Start / Stop / Export buttons -->
+    <div class="controls">
+      <button id="btn-start">▶ Start</button>
+      <button id="btn-stop" disabled>■ Stop</button>
+      <button id="btn-export" disabled>⬇ Export JSON</button>
+    </div>
+
+    <!-- Live transcript area — user lines in blue, assistant in green -->
+    <div id="transcript" aria-live="polite" aria-label="Conversation transcript"></div>
+
+    <!-- ── Settings (collapsible) ──────────────────────────────────── -->
+    <details class="settings">
+      <summary>⚙ Settings (optional overrides)</summary>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label for="cfg-endpoint">Endpoint</label>
+          <input type="url" id="cfg-endpoint" placeholder="https://…cognitiveservices.azure.com/" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-api-key">API Key</label>
+          <input type="password" id="cfg-api-key" placeholder="Leave blank to use server key" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-model">Model</label>
+          <input type="text" id="cfg-model" placeholder="gpt-4o" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-voice">Voice</label>
+          <input type="text" id="cfg-voice" placeholder="en-US-JennyNeural" />
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ── RIGHT: Protocol form ────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Lab Protocol</h2>
+
+    <div class="form-group">
+      <label for="field-researcherName">Researcher Name</label>
+      <input type="text" id="field-researcherName" placeholder="Speak your name…" />
+    </div>
+
+    <div class="form-group">
+      <label for="field-experimentTitle">Experiment Title</label>
+      <input type="text" id="field-experimentTitle" placeholder="Describe the experiment…" />
+    </div>
+
+    <div class="form-group">
+      <label for="field-experimentDate">Date (DD.MM.YYYY)</label>
+      <input type="text" id="field-experimentDate" placeholder="e.g. 15.06.2025" />
+    </div>
+
+    <div class="form-group">
+      <label for="field-procedureSteps">Procedure Steps</label>
+      <textarea id="field-procedureSteps" rows="4" placeholder="Describe what you did…"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="field-observations">Observations</label>
+      <textarea id="field-observations" rows="3" placeholder="What did you observe?"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="field-result">Result</label>
+      <input type="text" id="field-result" placeholder="pass / fail + brief notes" />
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────── -->
+<footer>
+  Powered by
+  <a href="https://learn.microsoft.com/azure/ai-services/speech-service/voice-live-overview"
+     target="_blank" rel="noopener">Azure Voice Live</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/abeckDev/voicelive-webrtc-starter"
+     target="_blank" rel="noopener">View on GitHub</a>
+</footer>
+
+<!-- app.js is loaded as an ES module so it can use import/export -->
+<script type="module" src="app.js"></script>
+</body>
+</html>
