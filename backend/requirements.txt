@@ -1,0 +1,10 @@
+# backend/requirements.txt
+# Python dependencies for the voicelive-webrtc-starter backend.
+# Install with: pip install -r requirements.txt
+
+azure-ai-voicelive==1.2.0b4
+azure-identity>=1.15.0
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+openai>=1.30.0
+python-dotenv>=1.0.0

@@ -1,0 +1,226 @@
+/* frontend/style.css
+ * ------------------
+ * Clean, minimal styling for the voicelive-webrtc-starter demo UI.
+ * No CSS framework is used — everything is hand-written so it is easy
+ * to understand and modify.
+ */
+
+/* ── Reset & base ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f4f6f9;
+  color: #222;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+header {
+  background: #0078d4;           /* Microsoft Azure blue */
+  color: #fff;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+header .badge {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Main layout ──────────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  main { grid-template-columns: 1fr; }
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 1.25rem;
+}
+
+.card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+/* ── Status indicator ─────────────────────────────────────────────────── */
+#status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+#status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: background 0.3s;
+}
+
+#status-dot.connected   { background: #28a745; }
+#status-dot.speaking    { background: #fd7e14; animation: pulse 0.6s infinite alternate; }
+#status-dot.listening   { background: #0078d4; }
+#status-dot.error       { background: #dc3545; }
+
+@keyframes pulse {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(1.4); opacity: 0.7; }
+}
+
+/* ── Voice controls ───────────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+#btn-start  { background: #0078d4; color: #fff; }
+#btn-stop   { background: #dc3545; color: #fff; }
+#btn-export { background: #6c757d; color: #fff; }
+
+/* ── Transcript area ──────────────────────────────────────────────────── */
+#transcript {
+  height: 260px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  background: #fafafa;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.transcript-line { margin-bottom: 0.4rem; }
+.transcript-line.user      { color: #0055aa; }
+.transcript-line.assistant { color: #1a7a3a; }
+.transcript-line.system    { color: #888; font-style: italic; }
+
+/* ── Protocol form ────────────────────────────────────────────────────── */
+.form-group {
+  margin-bottom: 0.9rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  background: #fff;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #0078d4;
+}
+
+/* Highlight fields that were just updated by the voice agent */
+.form-group input.just-updated,
+.form-group textarea.just-updated {
+  background: #e8f4ff;
+  border-color: #0078d4;
+}
+
+/* ── Settings (collapsible) ───────────────────────────────────────────── */
+details.settings {
+  margin-top: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+details.settings summary {
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  user-select: none;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+.settings-grid .form-group { margin-bottom: 0; }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+footer a { color: #0078d4; text-decoration: none; }

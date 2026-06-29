@@ -1,0 +1,30 @@
+# docker-compose.yml
+# -------------------
+# Local development setup for the voicelive-webrtc-starter.
+#
+# Usage:
+#   1. Copy .env.sample to .env and fill in your Azure credentials.
+#   2. docker compose up --build
+#   3. Open http://localhost:8000 in your browser.
+#
+# The backend container serves both the FastAPI API and the frontend
+# static files from the /app/frontend directory.
+#
+# Hot-reloading:
+#   Source code is volume-mounted so you can edit files without rebuilding.
+#   uvicorn runs with --reload by default inside the container (set via CMD).
+#   Note: frontend changes are served immediately; backend changes trigger reload.
+
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      # Mount source trees so edits are reflected without rebuilding the image.
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
