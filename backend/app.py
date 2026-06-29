@@ -8,11 +8,12 @@ This file wires together:
   - WebSocket endpoint (/ws/{client_id}) — the main session channel
   - Static file serving for the frontend (when the ../frontend directory exists)
 
-The WebSocket endpoint handles four message types:
+The WebSocket endpoint handles message types:
   - {type: "start",  config: {...}}  — open a new Voice Live session
   - {type: "audio",  data:  "..."}  — forward a base64 PCM audio chunk
   - {type: "stop"}                  — gracefully end the session
   - {type: "export"}                — return current extracted fields as JSON
+  - {type: "save_to_blob"}          — save extracted fields to Azure Blob Storage
 
 Run with:
   uvicorn app:app --reload --port 8000
@@ -31,6 +32,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
+from blob_storage import save_protocol_to_blob
+from protocol_selector import ProtocolSelector
 from voice_handler import VoiceSession
 
 # ---------------------------------------------------------------------------
@@ -72,6 +75,7 @@ app = FastAPI(
 # One VoiceSession per connected client (keyed by client_id).
 # ---------------------------------------------------------------------------
 _sessions: Dict[str, VoiceSession] = {}
+_protocol_selector = ProtocolSelector()
 
 # ---------------------------------------------------------------------------
 # REST endpoints
@@ -105,6 +109,22 @@ async def get_config() -> dict:
         # server-side key (default) or supply its own in the settings panel.
         "endpoint": os.getenv("AZURE_VOICELIVE_ENDPOINT", ""),
     }
+
+
+@app.get("/protocols")
+async def get_protocols() -> list[dict]:
+    return [
+        {
+            "id": protocol.get("id", ""),
+            "name": protocol.get("name", ""),
+            "description": protocol.get("description", ""),
+        }
+        for protocol in _protocol_selector.get_available_protocols()
+    ]
+
+
+async def save_to_blob(fields: dict, protocol_id: str, session_metadata: dict) -> str:
+    return await save_protocol_to_blob(fields, protocol_id, session_metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +173,10 @@ async def websocket_session(websocket: WebSocket, client_id: str) -> None:
                 _sessions[client_id] = session
 
                 config = message.get("config", {})
-                await session.start(config)
+                protocol_id = config.get("protocol_id") or config.get("protocolId")
+                if not protocol_id:
+                    protocol_id = _protocol_selector.get_available_protocols()[0].get("id", "")
+                await session.start(config, protocol_id=protocol_id)
                 logger.info("Session started for client: %s", client_id)
 
             # ── Audio chunk ───────────────────────────────────────────────
@@ -174,6 +197,18 @@ async def websocket_session(websocket: WebSocket, client_id: str) -> None:
             elif msg_type == "export":
                 fields = session.get_fields() if session else {}
                 await websocket.send_json({"type": "export", "data": fields})
+
+            elif msg_type == "save_to_blob":
+                try:
+                    fields = session.get_fields() if session else {}
+                    active_protocol_id = session.get_protocol_id() if session else ""
+                    protocol_id = message.get("protocol_id") or message.get("protocolId") or active_protocol_id
+                    session_metadata = message.get("session_metadata", {})
+                    url = await save_to_blob(fields, protocol_id, session_metadata)
+                    await websocket.send_json({"type": "blob_saved", "url": url})
+                except Exception as exc:
+                    logger.error("Save to blob failed for client %s: %s", client_id, exc)
+                    await websocket.send_json({"type": "error", "message": f"Save to blob failed: {exc}"})
 
             else:
                 logger.warning("Unknown message type '%s' from %s", msg_type, client_id)

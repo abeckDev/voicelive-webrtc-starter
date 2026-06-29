@@ -39,10 +39,22 @@
     </div>
 
     <!-- Start / Stop / Export buttons -->
+    <div id="protocol-panel" class="form-group">
+      <label for="protocol-select">Select Protocol</label>
+      <select id="protocol-select"></select>
+    </div>
+
     <div class="controls">
       <button id="btn-start">▶ Start</button>
       <button id="btn-stop" disabled>■ Stop</button>
+    </div>
+
+    <div id="export-group" class="controls" hidden>
       <button id="btn-export" disabled>⬇ Export JSON</button>
+      <button id="btn-export-xls" disabled>📊 Export XLS</button>
+      <button id="btn-export-wav" disabled>🔊 Export WAV</button>
+      <button id="btn-export-txt" disabled>📄 Export TXT</button>
+      <button id="btn-save-blob" disabled>☁ Save to Blob</button>
     </div>
 
     <!-- Live transcript area — user lines in blue, assistant in green -->
@@ -75,35 +87,36 @@
   <!-- ── RIGHT: Protocol form ────────────────────────────────────────── -->
   <div class="card">
     <h2>Lab Protocol</h2>
+    <div id="protocol-fields">
+      <div class="form-group">
+        <label for="field-researcherName">Researcher Name</label>
+        <input type="text" id="field-researcherName" placeholder="Speak your name…" />
+      </div>
 
-    <div class="form-group">
-      <label for="field-researcherName">Researcher Name</label>
-      <input type="text" id="field-researcherName" placeholder="Speak your name…" />
-    </div>
+      <div class="form-group">
+        <label for="field-experimentTitle">Experiment Title</label>
+        <input type="text" id="field-experimentTitle" placeholder="Describe the experiment…" />
+      </div>
 
-    <div class="form-group">
-      <label for="field-experimentTitle">Experiment Title</label>
-      <input type="text" id="field-experimentTitle" placeholder="Describe the experiment…" />
-    </div>
+      <div class="form-group">
+        <label for="field-experimentDate">Date (DD.MM.YYYY)</label>
+        <input type="text" id="field-experimentDate" placeholder="e.g. 15.06.2025" />
+      </div>
 
-    <div class="form-group">
-      <label for="field-experimentDate">Date (DD.MM.YYYY)</label>
-      <input type="text" id="field-experimentDate" placeholder="e.g. 15.06.2025" />
-    </div>
+      <div class="form-group">
+        <label for="field-procedureSteps">Procedure Steps</label>
+        <textarea id="field-procedureSteps" rows="4" placeholder="Describe what you did…"></textarea>
+      </div>
 
-    <div class="form-group">
-      <label for="field-procedureSteps">Procedure Steps</label>
-      <textarea id="field-procedureSteps" rows="4" placeholder="Describe what you did…"></textarea>
-    </div>
+      <div class="form-group">
+        <label for="field-observations">Observations</label>
+        <textarea id="field-observations" rows="3" placeholder="What did you observe?"></textarea>
+      </div>
 
-    <div class="form-group">
-      <label for="field-observations">Observations</label>
-      <textarea id="field-observations" rows="3" placeholder="What did you observe?"></textarea>
-    </div>
-
-    <div class="form-group">
-      <label for="field-result">Result</label>
-      <input type="text" id="field-result" placeholder="pass / fail + brief notes" />
+      <div class="form-group">
+        <label for="field-result">Result</label>
+        <input type="text" id="field-result" placeholder="pass / fail + brief notes" />
+      </div>
     </div>
   </div>
 
